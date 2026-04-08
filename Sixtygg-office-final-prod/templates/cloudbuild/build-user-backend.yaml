@@ -1,0 +1,43 @@
+# ============================================================
+# Cloud Build — user-backend
+# AWS Equivalent: templates/codebuild/build-user-backend.yaml
+# ============================================================
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:$COMMIT_SHA'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:latest'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME'
+
+# AWS Equivalent: environment_variables PARAMETER_STORE entries
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/sixtygg-dev-env-user-backend/versions/latest
+      env: 'ENV_USER_BACKEND'
+    - versionName: projects/$PROJECT_ID/secrets/sixtygg-dev-env-admin-backend/versions/latest
+      env: 'ENV_ADMIN_BACKEND'
+    - versionName: projects/$PROJECT_ID/secrets/sixtygg-dev-env-admin-frontend/versions/latest
+      env: 'ENV_ADMIN_FRONTEND'
+    - versionName: projects/$PROJECT_ID/secrets/sixtygg-dev-env-user-frontend/versions/latest
+      env: 'ENV_USER_FRONTEND'
+    - versionName: projects/$PROJECT_ID/secrets/sixtygg-dev-env-job-scheduler/versions/latest
+      env: 'ENV_JOB_SCHEDULER'
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:latest'
+
+options:
+  # AWS Equivalent: build_compute_type = "BUILD_GENERAL1_MEDIUM"
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

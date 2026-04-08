@@ -1,0 +1,97 @@
+# ============================================================
+# SIXTYGG — Fluent Bit Config for GCP Cloud Logging
+# AWS Equivalent: cloudwatch-values.yaml
+# Used with: Helm chart fluent-bit on GKE
+# ============================================================
+
+# AWS Equivalent: containerLogs.fluentBit.config.extraFiles
+config:
+  extraFiles:
+    application-log.conf: |
+      # -------------------------------------------------------
+      # INPUT — Container Logs
+      # AWS Equivalent: [INPUT] Name tail Tag application.*
+      # -------------------------------------------------------
+      [INPUT]
+        Name                tail
+        Tag                 application.*
+        Exclude_Path        /var/log/containers/fluentbit*, /var/log/containers/cloud-logging*
+        Path                /var/log/containers/*.log
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_container.db
+        Mem_Buf_Limit       50MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Rotate_Wait         30
+        storage.type        filesystem
+        Read_from_Head      ${READ_FROM_HEAD}
+
+      [INPUT]
+        Name                tail
+        Tag                 application.*
+        Path                /var/log/containers/fluentbit*
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_log.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      ${READ_FROM_HEAD}
+
+      # -------------------------------------------------------
+      # FILTER — Add GCP metadata
+      # AWS Equivalent: [FILTER] Name aws (adds ec2_instance_id etc)
+      # GCP: adds project_id, zone, cluster_name
+      # -------------------------------------------------------
+      [FILTER]
+        Name                  modify
+        Match                 application.*
+        Add                   cluster_name  ${CLUSTER_NAME}
+        Add                   project_id    ${PROJECT_ID}
+
+      # AWS Equivalent: [FILTER] Name kubernetes
+      [FILTER]
+        Name                kubernetes
+        Match               application.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_Tag_Prefix     application.var.log.containers.
+        Merge_Log           On
+        Merge_Log_Key       log_processed
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude Off
+        Labels              On
+        Annotations         Off
+        Use_Kubelet         On
+        Kubelet_Port        10250
+        Buffer_Size         0
+        Use_Pod_Association On
+
+      # AWS Equivalent: [FILTER] Name rewrite_tag
+      [FILTER]
+        Name                rewrite_tag
+        Match               application.*
+        Rule                $kubernetes['labels']['app.kubernetes.io/instance'] ^(.*)$ $kubernetes['namespace_name'].$kubernetes['labels']['app.kubernetes.io/instance'] false
+        Emitter_Name        re_emitter
+
+      # -------------------------------------------------------
+      # OUTPUT — GCP Cloud Logging
+      # AWS Equivalent: [OUTPUT] Name cloudwatch_logs
+      #   log_group_name = /aws/containerinsights/${CLUSTER_NAME}/application
+      # GCP: stackdriver (Cloud Logging)
+      # -------------------------------------------------------
+      [OUTPUT]
+        Name                stackdriver
+        Match               *.*
+        # AWS Equivalent: region = ${AWS_REGION}
+        location            ${GCP_REGION}
+        # AWS Equivalent: log_group_name = /aws/containerinsights/${CLUSTER_NAME}/application
+        logname_key         log_name
+        resource            k8s_container
+        # AWS Equivalent: log_stream_template = $TAG
+        tag_prefix          application.var.log.containers.
+        # AWS Equivalent: auto_create_group = true
+        auto_create_resource true
+        k8s-cluster-name    ${CLUSTER_NAME}
+        k8s-cluster-location ${GCP_REGION}
+        labels_key          labels
+        label_map_path      /fluent-bit/etc/labelmap.json
+        export_to_project_id ${PROJECT_ID}
