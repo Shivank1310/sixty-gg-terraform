@@ -36,6 +36,32 @@ vpc = {
   enable_nat_gateway           = true
   enable_private_google_access = true
 }
+# vpc_peering = {
+#   old-mng-vpc-to-new = {
+#     peer_network = "projects/OTHER_PROJECT_ID/global/networks/OTHER_VPC"
+#   }
+#   new-mng-to-vtx-nonprd = {
+#     peer_network = "projects/OTHER_PROJECT_ID/global/networks/OTHER_VPC"
+#   }
+#   new-mng-to-vdp-stg = {
+#     peer_network = "projects/OTHER_PROJECT_ID/global/networks/OTHER_VPC"
+#   }
+# }
+
+# vpc_peering_accepter = {
+#   old-mng-vpc-to-new = {
+#     peer_network = "projects/OTHER_PROJECT_ID/global/networks/OTHER_VPC"
+#     auto_accept  = true
+#   }
+# }
+
+# private_subnets_routes = [
+#   { destination_cidr_block = "10.0.0.0/24" },
+#   { destination_cidr_block = "10.0.1.0/24" },
+#   { destination_cidr_block = "10.0.3.0/24" },
+#   { destination_cidr_block = "10.20.0.0/16" },
+#   { destination_cidr_block = "10.192.0.0/16" },
+# ]
 
 # -------------------------------------------------------
 # GKE CLUSTER
@@ -68,10 +94,10 @@ gke = {
       name          = "sixtygg-dev-pool"
       machine_type  = "e2-medium"
       min_count     = 0
-      max_count     = 2
-      desired_count = 1
-      disk_size_gb  = 30
-      disk_type     = "pd-standard"
+      max_count     = 15
+      desired_count = 2
+      disk_size_gb  = 100
+      disk_type     = "pd-ssd"
       image_type    = "COS_CONTAINERD"
       auto_repair   = true
       auto_upgrade  = true
@@ -86,11 +112,11 @@ gke = {
 # -------------------------------------------------------
 bastion = {
   name         = "sixtygg-dev-bastion"
-  machine_type = "e2-micro"
+  machine_type = "e2-medium"
   image        = "ubuntu-os-cloud/ubuntu-2204-lts"
-  disk_size    = 20
-  disk_type    = "pd-standard"
-  monitoring   = false
+  disk_size    = 50
+  disk_type    = "pd-ssd"
+  monitoring   = true
 }
 
 # -------------------------------------------------------
@@ -99,13 +125,13 @@ bastion = {
 rds = {
   name                = "sixtygg-dev"
   engine_version      = "POSTGRES_15"
-  instance_tier       = "db-f1-micro"
-  disk_size           = 10
-  availability_type   = "ZONAL"
+  instance_tier       = "db-custom-4-16384"
+  disk_size           = 100
+  availability_type   = "REGIONAL"
   database_name       = "sixtygg"
   master_username     = "postgres"
-  enable_read_replica = false
-  deletion_protection = false
+  enable_read_replica = true
+  deletion_protection = true
 }
 
 # -------------------------------------------------------
@@ -113,8 +139,8 @@ rds = {
 # -------------------------------------------------------
 redis = {
   cluster_id     = "sixtygg-dev"
-  tier           = "BASIC"
-  memory_size_gb = 1
+  tier           = "STANDARD_HA"
+  memory_size_gb = 4
   version        = "REDIS_7_0"
   create_cluster = true
 }
@@ -302,7 +328,7 @@ job_scheduler_repo = {
 # AWS Equivalent: branch_name { name = "staging" }
 # -------------------------------------------------------
 branch_name = {
-  name = "dev"
+  name = "production"
 }
 
 # -------------------------------------------------------
