@@ -35,37 +35,21 @@
 #   machineType: 'E2_HIGHCPU_8'
 #   logging: CLOUD_LOGGING_ONLY
 
-========================================================================
-New dev-gamification 
-========================================================================
+# ========================================================================
+# New dev-gamification 
+# ========================================================================
 # ============================================================
 # Cloud Build — gamification
 # AWS Equivalent: templates/codebuild/build-gamification.yaml
 # ============================================================
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build'
-    args:
-      - 'build'
-      - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:$COMMIT_SHA'
-      - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:latest'
-      - '.'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push'
-    args:
-      - 'push'
-      - '--all-tags'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME'
-
   # AWS Equivalent: install phase
-  # echo "$ENV_GAMIFICATION" | awk '...' > config-values.yaml
-  # cp config-values.yaml chart/
+  # Step 1: ENV_GAMIFICATION se config-values.yaml generate karo
+  # phir chart/ me copy karo — PEHLE ye hoga taaki Docker build ke time available ho
   - name: 'bash'
     id: 'generate-config-values'
     entrypoint: 'bash'
+    secretEnv: ['ENV_GAMIFICATION']
     args:
       - '-c'
       - |
@@ -84,12 +68,31 @@ steps:
         echo "Generated config-values.yaml:"
         cat config-values.yaml
         cp config-values.yaml chart/
-    secretEnv: ['ENV_GAMIFICATION']
 
-  # AWS Equivalent: post_build phase
-  # wget yq + ./yq e ".image.tag = \"$IMAGE_TAG\"" -i chart/values.yaml
-  # ./yq e ".image.tag = \"$IMAGE_TAG\"" -i chart/worker-values.yaml
-  # ./yq e ".image.tag = \"$IMAGE_TAG\"" -i chart/jobs-values.yaml
+  # AWS Equivalent: build phase
+  # Step 2: Docker image build karo
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:$COMMIT_SHA'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME:latest'
+      - '.'
+
+  # AWS Equivalent: post_build phase — docker push
+  # Step 3: Image push karo Artifact Registry me
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME'
+
+  # AWS Equivalent: post_build phase — yq image tag update
+  # Step 4: values.yaml, worker-values.yaml, jobs-values.yaml me image.tag update karo
+  # AWS me: wget yq + ./yq e ".image.tag = \"$IMAGE_TAG\"" -i chart/values.yaml
   - name: 'mikefarah/yq:4.45.1'
     id: 'update-image-tags'
     entrypoint: 'sh'
@@ -114,4 +117,3 @@ options:
   # AWS Equivalent: build_compute_type = "BUILD_GENERAL1_MEDIUM"
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
-
