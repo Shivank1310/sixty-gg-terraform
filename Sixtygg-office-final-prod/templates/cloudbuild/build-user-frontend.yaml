@@ -11,7 +11,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "$$ENV_USER_FRONTEND" | sed 's/\([^ ]*\): *\("\([^"]*\)"\)/\1=\2/g' > .env
+        echo "$$ENV_USER_FRONTEND" | sed 's/\([^ ]*\): *\("[^"]*"\)/\1=\2/g' > .env
         echo "Generated .env file:"
         cat .env
 
